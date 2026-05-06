@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Records Checker | Bulk SPF & MX Tool</title>
+    <meta name="description" content="High-performance bulk DNS record checker for SPF and MX records.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0c;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.1) 0, transparent 50%);
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-200 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+                    DNS Records Checker
+                </h1>
+                <p class="text-slate-400 text-lg">High-performance bulk analysis for SPF and MX records.</p>
+            </div>
+            <div class="flex items-center gap-3 justify-center md:justify-start">
+                <span id="status-badge" class="hidden px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse-subtle">
+                    Processing...
+                </span>
+                <div class="flex gap-2">
+                    <button id="copy-btn" class="p-2 glass rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50" title="Copy Results" disabled>
+                        <i data-lucide="copy" class="w-5 h-5"></i>
+                    </button>
+                    <button id="download-btn" class="p-2 glass rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50" title="Download CSV" disabled>
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Input Controls -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="glass rounded-2xl p-6 shadow-xl">
+                    <label for="domain-input" class="block text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                        <i data-lucide="globe" class="w-4 h-4"></i>
+                        Domains (one per line)
+                    </label>
+                    <textarea 
+                        id="domain-input" 
+                        class="w-full h-64 bg-black/40 border border-white/10 rounded-xl p-4 text-sm font-mono focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 outline-none transition-all custom-scrollbar placeholder-slate-600"
+                        placeholder="example.com&#10;google.com&#10;sub.domain.org"
+                    ></textarea>
+                    
+                    <div class="mt-6 space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-blue-400"></i>
+                                <span class="text-sm font-medium">Check SPF</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="check-spf" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="mail" class="w-5 h-5 text-indigo-400"></i>
+                                <span class="text-sm font-medium">Check MX</span>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="check-mx" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button 
+                        id="check-btn" 
+                        class="w-full mt-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+                    >
+                        <span>Check Records</span>
+                        <i data-lucide="zap" class="w-4 h-4 group-hover:fill-current"></i>
+                    </button>
+                </div>
+
+                <!-- Stats Summary -->
+                <div id="stats-container" class="hidden glass rounded-2xl p-6 grid grid-cols-2 gap-4">
+                    <div class="text-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <div class="text-2xl font-bold text-white" id="total-checked">0</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1">Domains</div>
+                    </div>
+                    <div class="text-center p-3 bg-white/5 rounded-xl border border-white/5">
+                        <div class="text-2xl font-bold text-green-400" id="total-ok">0</div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mt-1">Success</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Results Table -->
+            <div class="lg:col-span-2 space-y-4">
+                <!-- Progress Bar -->
+                <div id="progress-container" class="hidden space-y-2">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-400 font-medium">Scanning Progress</span>
+                        <span id="progress-percent" class="text-blue-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                        <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div id="filter-container" class="hidden flex flex-wrap gap-2 mb-4">
+                    <button class="filter-chip active px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-white/10 text-white transition-all hover:bg-white/20" data-filter="all">All Results</button>
+                    <button class="filter-chip px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-black/20 text-slate-400 transition-all hover:bg-white/10" data-filter="spf">Has SPF</button>
+                    <button class="filter-chip px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-black/20 text-slate-400 transition-all hover:bg-white/10" data-filter="mx">Has MX</button>
+                    <button class="filter-chip px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 bg-black/20 text-slate-400 transition-all hover:bg-white/10" data-filter="error">Errors</button>
+                </div>
+
+                <div class="glass rounded-2xl overflow-hidden shadow-xl border border-white/5">
+                    <div class="overflow-x-auto custom-scrollbar h-[calc(100vh-280px)] min-h-[400px]">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 glass z-10">
+                                <tr>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-white/5">Domain</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-white/5">SPF Record</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-white/5">MX Records</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-white/5">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-body" class="divide-y divide-white/5">
+                                <!-- Initial state -->
+                                <tr id="empty-state">
+                                    <td colspan="4" class="px-6 py-20 text-center text-slate-500">
+                                        <div class="flex flex-col items-center gap-3">
+                                            <i data-lucide="search" class="w-12 h-12 opacity-10"></i>
+                                            <p>No results yet. Enter domains and click "Check Records".</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed bottom-8 right-8 z-50 pointer-events-none space-y-3"></div>
+
+    <script src="script.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
