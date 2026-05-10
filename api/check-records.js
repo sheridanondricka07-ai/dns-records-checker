@@ -40,8 +40,9 @@ async function checkDomain(domain, checkSPF, checkMX) {
             tasks.push(
                 withTimeout(dns.resolveTxt(domain), DEFAULT_TIMEOUT)
                     .then(records => {
+                        // Join multi-part TXT records (some SPF records are split across strings)
                         const spfRecord = records
-                            .flat()
+                            .map(parts => parts.join(''))
                             .find(txt => txt.startsWith('v=spf1'));
                         result.spf = spfRecord || 'Not Found';
                     })

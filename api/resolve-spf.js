@@ -82,7 +82,9 @@ async function resolveMechanism(rootDomain, mechanism) {
 
             case 'include':
                 const txtRecords = await withTimeout(dns.resolveTxt(value), DEFAULT_TIMEOUT).catch(() => []);
-                const spf = txtRecords.flat().find(txt => txt.startsWith('v=spf1'));
+                const spf = txtRecords
+                    .map(parts => parts.join(''))
+                    .find(txt => txt.startsWith('v=spf1'));
                 results.nestedRecord = spf || 'No SPF record found at ' + value;
                 break;
 
