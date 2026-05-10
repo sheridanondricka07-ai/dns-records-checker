@@ -154,6 +154,7 @@ function appendResultRow(result) {
         </td>
         <td class="px-6 py-4 max-w-md">
             <div class="break-words ${spfClass}">${spfDisplay}</div>
+            <div class="mechanism-details hidden mt-3 flex flex-wrap gap-2 animate-in slide-in-from-top-2 duration-300"></div>
         </td>
         <td class="px-6 py-4 max-w-md">
             <div class="break-all ${mxClass}">${mxDisplay}</div>
@@ -183,35 +184,29 @@ function formatSpfRecord(spf, domain) {
     }).join(' ');
 }
 
-// Modal and Mechanism Resolution
+// Inline Mechanism Resolution
 document.addEventListener('click', (e) => {
     const mechanismEl = e.target.closest('.spf-mechanism');
     if (mechanismEl) {
         const domain = mechanismEl.dataset.domain;
         const mechanism = mechanismEl.dataset.mechanism;
-        showMechanismDetails(domain, mechanism);
-    }
-    
-    if (e.target.classList.contains('modal-backdrop')) {
-        closeModal();
+        toggleMechanismInline(domain, mechanism, mechanismEl);
     }
 });
 
-async function showMechanismDetails(domain, mechanism) {
-    const modal = document.getElementById('mechanism-modal');
-    const modalMechanism = document.getElementById('modal-mechanism');
-    const modalLoader = document.getElementById('modal-loader');
-    const modalResults = document.getElementById('modal-results');
-    const ipsContainer = document.getElementById('ips-container');
-    const ipsList = document.getElementById('ips-list');
-    const nestedContainer = document.getElementById('nested-container');
-    const nestedRecord = document.getElementById('nested-record');
-
-    modalMechanism.innerText = mechanism;
-    modalLoader.classList.remove('hidden');
-    modalResults.classList.add('hidden');
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+async function toggleMechanismInline(domain, mechanism, targetEl) {
+    const row = targetEl.closest('tr');
+    const detailsContainer = row.querySelector('.mechanism-details');
+    
+    detailsContainer.classList.remove('hidden');
+    
+    // Add a temporary loading pill
+    const loadingPill = document.createElement('div');
+    loadingPill.className = 'spf-pill animate-pulse-subtle';
+    loadingPill.id = `loading-${Math.random().toString(36).substr(2, 9)}`;
+    loadingPill.innerHTML = `<span class="spf-pill-icon"><i data-lucide="loader-2" class="w-2 h-2 animate-spin"></i></span> Resolving ${mechanism}...`;
+    detailsContainer.appendChild(loadingPill);
+    lucide.createIcons();
 
     try {
         const response = await fetch('/api/resolve-spf', {
@@ -223,54 +218,32 @@ async function showMechanismDetails(domain, mechanism) {
         if (!response.ok) throw new Error('Resolution failed');
 
         const data = await response.json();
+        loadingPill.remove();
         
-        // Render IPs
-        ipsList.innerHTML = '';
         if (data.ips && data.ips.length > 0) {
             data.ips.forEach(ip => {
-                const badge = document.createElement('span');
-                badge.className = 'px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md text-xs font-mono';
-                badge.innerText = ip;
-                ipsList.appendChild(badge);
+                const pill = document.createElement('div');
+                pill.className = 'spf-pill animate-in zoom-in duration-300';
+                pill.innerHTML = `<span class="spf-pill-icon">1</span> ${mechanism}:${ip}`;
+                detailsContainer.appendChild(pill);
             });
-            ipsContainer.classList.remove('hidden');
+        } else if (data.nestedRecord) {
+            const pill = document.createElement('div');
+            pill.className = 'spf-pill border-indigo-500/30 text-indigo-300 animate-in zoom-in duration-300';
+            pill.innerHTML = `<span class="spf-pill-icon">?</span> ${mechanism}: ${data.nestedRecord}`;
+            detailsContainer.appendChild(pill);
         } else {
-            ipsContainer.classList.add('hidden');
+            const pill = document.createElement('div');
+            pill.className = 'spf-pill border-red-500/30 text-red-400 animate-in zoom-in duration-300';
+            pill.innerHTML = `<span class="spf-pill-icon">!</span> ${mechanism}: ${data.error || 'No results'}`;
+            detailsContainer.appendChild(pill);
         }
-
-        // Render Nested Record
-        if (data.nestedRecord) {
-            nestedRecord.innerText = data.nestedRecord;
-            nestedContainer.classList.remove('hidden');
-        } else {
-            nestedContainer.classList.add('hidden');
-        }
-
-        if (!data.ips?.length && !data.nestedRecord && data.error) {
-            ipsList.innerHTML = `<span class="text-red-400 text-xs">${data.error}</span>`;
-            ipsContainer.classList.remove('hidden');
-        } else if (!data.ips?.length && !data.nestedRecord) {
-            ipsList.innerHTML = `<span class="text-slate-500 text-xs italic">No IPs found</span>`;
-            ipsContainer.classList.remove('hidden');
-        }
-
-        modalLoader.classList.add('hidden');
-        modalResults.classList.remove('hidden');
-        lucide.createIcons();
-
     } catch (error) {
         console.error('Resolution error:', error);
-        ipsList.innerHTML = `<span class="text-red-400 text-xs">Error resolving mechanism</span>`;
-        ipsContainer.classList.remove('hidden');
-        modalLoader.classList.add('hidden');
-        modalResults.classList.remove('hidden');
+        loadingPill.innerHTML = `<span class="spf-pill-icon bg-red-500">!</span> Error resolving ${mechanism}`;
+        loadingPill.classList.remove('animate-pulse-subtle');
+        loadingPill.classList.add('border-red-500/30', 'text-red-400');
     }
-}
-
-function closeModal() {
-    const modal = document.getElementById('mechanism-modal');
-    modal.classList.add('hidden');
-    document.body.style.overflow = 'auto';
 }
 
 function getStatusBadge(status) {
