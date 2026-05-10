@@ -139,7 +139,7 @@ function appendResultRow(result) {
     row.dataset.hasMx = result.mx && result.mx !== 'Not Found' && result.mx !== 'Error' ? 'true' : 'false';
     row.dataset.status = result.status;
 
-    const spfDisplay = result.spf || '-';
+    const spfDisplay = formatSpfRecord(result.spf, result.domain) || '-';
     const mxDisplay = result.mx || '-';
     
     const spfClass = result.spf === 'Not Found' ? 'text-slate-500' : (result.spf === 'Error' ? 'text-red-400' : 'text-blue-300 font-mono text-[11px]');
@@ -153,7 +153,7 @@ function appendResultRow(result) {
             </div>
         </td>
         <td class="px-6 py-4 max-w-md">
-            <div class="break-all ${spfClass}">${spfDisplay}</div>
+            <div class="break-words ${spfClass}">${spfDisplay}</div>
         </td>
         <td class="px-6 py-4 max-w-md">
             <div class="break-all ${mxClass}">${mxDisplay}</div>
@@ -163,6 +163,114 @@ function appendResultRow(result) {
         </td>
     `;
     resultsBody.appendChild(row);
+}
+
+function formatSpfRecord(spf, domain) {
+    if (!spf || spf === 'Not Found' || spf === 'Error') return spf;
+    
+    const parts = spf.split(/\s+/);
+    return parts.map(part => {
+        if (!part) return '';
+        if (part.startsWith('v=spf1')) return part;
+        
+        const mechanismType = part.replace(/^[+\-~?]/, '').split(/[:/]/)[0].toLowerCase();
+        const validMechanisms = ['a', 'mx', 'include', 'ip4', 'ip6', 'exists', 'ptr', 'all'];
+        
+        if (validMechanisms.includes(mechanismType)) {
+            return `<span class="spf-mechanism" data-domain="${domain}" data-mechanism="${part}">${part}</span>`;
+        }
+        return part;
+    }).join(' ');
+}
+
+// Modal and Mechanism Resolution
+document.addEventListener('click', (e) => {
+    const mechanismEl = e.target.closest('.spf-mechanism');
+    if (mechanismEl) {
+        const domain = mechanismEl.dataset.domain;
+        const mechanism = mechanismEl.dataset.mechanism;
+        showMechanismDetails(domain, mechanism);
+    }
+    
+    if (e.target.classList.contains('modal-backdrop')) {
+        closeModal();
+    }
+});
+
+async function showMechanismDetails(domain, mechanism) {
+    const modal = document.getElementById('mechanism-modal');
+    const modalMechanism = document.getElementById('modal-mechanism');
+    const modalLoader = document.getElementById('modal-loader');
+    const modalResults = document.getElementById('modal-results');
+    const ipsContainer = document.getElementById('ips-container');
+    const ipsList = document.getElementById('ips-list');
+    const nestedContainer = document.getElementById('nested-container');
+    const nestedRecord = document.getElementById('nested-record');
+
+    modalMechanism.innerText = mechanism;
+    modalLoader.classList.remove('hidden');
+    modalResults.classList.add('hidden');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        const response = await fetch('/api/resolve-spf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain, mechanism })
+        });
+
+        if (!response.ok) throw new Error('Resolution failed');
+
+        const data = await response.json();
+        
+        // Render IPs
+        ipsList.innerHTML = '';
+        if (data.ips && data.ips.length > 0) {
+            data.ips.forEach(ip => {
+                const badge = document.createElement('span');
+                badge.className = 'px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-md text-xs font-mono';
+                badge.innerText = ip;
+                ipsList.appendChild(badge);
+            });
+            ipsContainer.classList.remove('hidden');
+        } else {
+            ipsContainer.classList.add('hidden');
+        }
+
+        // Render Nested Record
+        if (data.nestedRecord) {
+            nestedRecord.innerText = data.nestedRecord;
+            nestedContainer.classList.remove('hidden');
+        } else {
+            nestedContainer.classList.add('hidden');
+        }
+
+        if (!data.ips?.length && !data.nestedRecord && data.error) {
+            ipsList.innerHTML = `<span class="text-red-400 text-xs">${data.error}</span>`;
+            ipsContainer.classList.remove('hidden');
+        } else if (!data.ips?.length && !data.nestedRecord) {
+            ipsList.innerHTML = `<span class="text-slate-500 text-xs italic">No IPs found</span>`;
+            ipsContainer.classList.remove('hidden');
+        }
+
+        modalLoader.classList.add('hidden');
+        modalResults.classList.remove('hidden');
+        lucide.createIcons();
+
+    } catch (error) {
+        console.error('Resolution error:', error);
+        ipsList.innerHTML = `<span class="text-red-400 text-xs">Error resolving mechanism</span>`;
+        ipsContainer.classList.remove('hidden');
+        modalLoader.classList.add('hidden');
+        modalResults.classList.remove('hidden');
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('mechanism-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
 }
 
 function getStatusBadge(status) {

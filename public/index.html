@@ -43,6 +43,22 @@
         .animate-pulse-subtle {
             animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+        .spf-mechanism {
+            cursor: pointer;
+            padding: 1px 3px;
+            border-radius: 4px;
+            border-bottom: 1px dashed rgba(59, 130, 246, 0.4);
+            transition: all 0.2s;
+        }
+        .spf-mechanism:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.8);
+            color: #60a5fa;
+        }
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="text-slate-200 p-4 md:p-8">
@@ -182,6 +198,47 @@
 
     <!-- Toast Notifications -->
     <div id="toast-container" class="fixed bottom-8 right-8 z-50 pointer-events-none space-y-3"></div>
+
+    <!-- Mechanism Resolution Modal -->
+    <div id="mechanism-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="glass relative w-full max-w-lg rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in duration-200">
+            <div class="flex items-center justify-between p-4 border-b border-white/5">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="info" class="w-5 h-5 text-blue-400"></i>
+                    <h3 class="font-bold text-white uppercase tracking-wider text-sm" id="modal-title">Mechanism Details</h3>
+                </div>
+                <button onclick="closeModal()" class="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <div id="modal-content" class="space-y-4">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[10px] uppercase font-bold text-slate-500">Mechanism</span>
+                        <code id="modal-mechanism" class="text-blue-300 font-mono text-sm"></code>
+                    </div>
+                    <div id="modal-loader" class="py-10 flex flex-col items-center gap-3">
+                        <i data-lucide="loader-2" class="w-8 h-8 text-blue-500 animate-spin"></i>
+                        <p class="text-slate-400 text-sm">Resolving mechanism...</p>
+                    </div>
+                    <div id="modal-results" class="hidden space-y-4">
+                        <div id="ips-container">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 mb-2 block">Resolved IPs</span>
+                            <div id="ips-list" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        <div id="nested-container" class="hidden">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 mb-2 block">Nested SPF Record</span>
+                            <div id="nested-record" class="p-3 bg-black/40 border border-white/10 rounded-lg text-xs font-mono text-indigo-300 break-all"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-white/5 border-t border-white/5 flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
     <script>
