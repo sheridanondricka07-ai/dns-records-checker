@@ -198,12 +198,27 @@ async function toggleMechanismInline(domain, mechanism, targetEl) {
     const row = targetEl.closest('tr');
     const detailsContainer = row.querySelector('.mechanism-details');
     
+    // Check if this mechanism is already being displayed
+    const existingPills = detailsContainer.querySelectorAll(`[data-mech="${mechanism}"]`);
+    if (existingPills.length > 0) {
+        // Toggle off: remove existing pills
+        existingPills.forEach(p => p.remove());
+        // Hide container if no more pills
+        if (detailsContainer.children.length === 0) {
+            detailsContainer.classList.add('hidden');
+        }
+        return;
+    }
+
+    // Check if already loading this mechanism to prevent duplicates
+    if (detailsContainer.querySelector(`[data-loading="${mechanism}"]`)) return;
+
     detailsContainer.classList.remove('hidden');
     
     // Add a temporary loading pill
     const loadingPill = document.createElement('div');
     loadingPill.className = 'spf-pill animate-pulse-subtle';
-    loadingPill.id = `loading-${Math.random().toString(36).substr(2, 9)}`;
+    loadingPill.dataset.loading = mechanism;
     loadingPill.innerHTML = `<span class="spf-pill-icon"><i data-lucide="loader-2" class="w-2 h-2 animate-spin"></i></span> Resolving ${mechanism}...`;
     detailsContainer.appendChild(loadingPill);
     lucide.createIcons();
@@ -224,24 +239,29 @@ async function toggleMechanismInline(domain, mechanism, targetEl) {
             data.ips.forEach(ip => {
                 const pill = document.createElement('div');
                 pill.className = 'spf-pill animate-in zoom-in duration-300';
+                pill.dataset.mech = mechanism;
                 pill.innerHTML = `<span class="spf-pill-icon">1</span> ${mechanism}:${ip}`;
                 detailsContainer.appendChild(pill);
             });
         } else if (data.nestedRecord) {
             const pill = document.createElement('div');
             pill.className = 'spf-pill border-indigo-500/30 text-indigo-300 animate-in zoom-in duration-300';
+            pill.dataset.mech = mechanism;
             pill.innerHTML = `<span class="spf-pill-icon">?</span> ${mechanism}: ${data.nestedRecord}`;
             detailsContainer.appendChild(pill);
         } else {
             const pill = document.createElement('div');
             pill.className = 'spf-pill border-red-500/30 text-red-400 animate-in zoom-in duration-300';
+            pill.dataset.mech = mechanism;
             pill.innerHTML = `<span class="spf-pill-icon">!</span> ${mechanism}: ${data.error || 'No results'}`;
             detailsContainer.appendChild(pill);
         }
     } catch (error) {
         console.error('Resolution error:', error);
         loadingPill.innerHTML = `<span class="spf-pill-icon bg-red-500">!</span> Error resolving ${mechanism}`;
+        loadingPill.dataset.mech = mechanism; // Mark as mech so it can be toggled off even if error
         loadingPill.classList.remove('animate-pulse-subtle');
+        loadingPill.removeAttribute('data-loading');
         loadingPill.classList.add('border-red-500/30', 'text-red-400');
     }
 }
